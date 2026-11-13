@@ -5,6 +5,7 @@ import { MUSCLES } from './data/muscles.js';
 import { EQUIPMENT, LEVEL_NAMES } from './data/equipment.js';
 import { heatOf } from './data/exercises.js';
 import { store } from './store.js';
+import { hasPhoto, photoSrc } from './data/photos.js';
 
 export const esc = (s) =>
   String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
@@ -228,6 +229,11 @@ export function loadBar(v, label = '') {
 export function thumb(e, { focus } = {}) {
   const heat = heatOf(e);
   return `<div class="body-pair">${bodySVG({ view: 'front', heat, focus })}${bodySVG({ view: 'back', heat, focus })}</div>`;
+}
+
+/** Маленькое фото упражнения (если фото нет — карта мышц). */
+export function photoThumb(e) {
+  return hasPhoto(e.id) ? `<span class="ph-thumb"><img src="${photoSrc(e.id, 'a')}" alt="" loading="lazy" decoding="async"></span>` : `<span class="ph-thumb map">${thumb(e)}</span>`;
 }
 
 export const eqNames = (e) => e.eq.filter((q) => q !== 'bench' || e.eq.length === 1).map((q) => EQUIPMENT[q].short);

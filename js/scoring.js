@@ -36,7 +36,7 @@ export function targetsOf(groups) {
 export function isDuplicate(a, b) {
   if (a.id === b.id) return true;
   const sim = cosine(a, b);
-  if (a.primary === b.primary && a.anim[0] === b.anim[0]) return true; // одно и то же движение (штанга / гантели / вариант)
+  if (a.primary === b.primary && a.move === b.move) return true; // одно и то же движение (штанга / гантели / вариант)
   return sim >= 0.97 || (sim >= 0.94 && a.primary === b.primary && a.type === b.type);
 }
 

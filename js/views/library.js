@@ -36,6 +36,7 @@ export function renderLibrary(view, _params, query) {
             .map(([k, v]) => `<option value="${k}"${st.sort === k ? ' selected' : ''}>${v}</option>`)
             .join('')}</select>
         </div>
+        <div class="quick-groups chips scroll-x" id="qgroups"></div>
         <p class="result-count" id="count"></p>
         <div class="ex-grid" id="list"></div>
       </div>
@@ -45,6 +46,11 @@ export function renderLibrary(view, _params, query) {
   const side = view.querySelector('#side');
   const chip = (key, val, label, on) => `<button class="chip sm${on ? ' on' : ''}" data-k="${key}" data-v="${val}">${label}</button>`;
   const drawSide = () => {
+    view.querySelector('#qgroups').innerHTML = chip('group', '', 'Все', !st.group) + GROUP_ORDER.map((g) => chip('group', g, GROUPS[g].short, st.group === g)).join('');
+    const nActive = ['eq', 'type', 'level'].filter((k) => st[k]).length;
+    const ft = view.querySelector('#ftoggle');
+    ft.classList.toggle('on', nActive > 0);
+    ft.innerHTML = `${icon.filter}Фильтры${nActive ? ` · ${nActive}` : ''}`;
     side.innerHTML = `
       <h4>Группа мышц</h4>
       <div class="chips">${chip('group', '', 'Все', !st.group)}${GROUP_ORDER.map((g) => chip('group', g, GROUPS[g].name, st.group === g)).join('')}</div>
@@ -99,14 +105,19 @@ export function renderLibrary(view, _params, query) {
   drawSide();
   drawList();
 
-  side.addEventListener('click', (e) => {
+  const onChip = (e) => {
     const b = e.target.closest('[data-k]');
     if (!b) return;
     st[b.dataset.k] = b.dataset.v;
+    const qg = view.querySelector('#qgroups');
+    const x = qg.scrollLeft;
     drawSide();
+    qg.scrollLeft = x;
     drawList();
     syncUrl();
-  });
+  };
+  side.addEventListener('click', onChip);
+  view.querySelector('#qgroups').addEventListener('click', onChip);
   view.addEventListener('click', (e) => {
     if (e.target.closest('[data-reset]')) {
       Object.assign(st, { q: '', group: '', eq: '', type: '', level: '' });

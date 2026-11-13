@@ -1,4 +1,4 @@
-// Страница упражнения: тепловая карта, нагрузка по мышцам, техника, похожие.
+// Страница упражнения: фото/схема техники, тепловая карта, нагрузка по мышцам, шаги, похожие.
 
 import { bodySVG, heatColor } from '../body/bodymap.js';
 import { MUSCLES, GROUPS } from '../data/muscles.js';
@@ -8,7 +8,7 @@ import { bindBodyMap, esc, icon, exCard, footer, heatLegend, levelName, highligh
 import { navigate } from '../router.js';
 import { store } from '../store.js';
 import { bindCardActions, addToWorkoutMenu } from './shared.js';
-import { mountAnimation } from '../anim/player.js';
+import { mountTechnique } from '../anim/player.js';
 
 const BREATH = {
   compound: 'Вдох — перед опусканием веса (уступающая фаза), выдох — на усилии, после прохождения самой тяжёлой точки. Пресс напряжён всё движение.',
@@ -31,8 +31,18 @@ export function renderExercise(view, { id }) {
   view.innerHTML = `
     <nav class="crumbs" aria-label="Навигация"><a href="#/exercises">Упражнения</a>${icon.right}<a href="#/group/${e.primaryGroup}">${esc(G.name)}</a>${icon.right}<span>${esc(e.name)}</span></nav>
     <section class="ex-layout">
-      <div class="stack">
+      <div class="ex-col">
+        <div class="tech-media glass">
+          <div class="tm-head"><h2>Техника</h2><div class="seg" id="tech-mode" role="group" aria-label="Вид техники"></div></div>
+          <div class="anim-box" id="anim"></div>
+          <div class="facts">
+            <div class="fact"><span>Повторения</span><b>${esc(e.reps)}</b></div>
+            <div class="fact"><span>Подходы</span><b>${e.type === 'compound' ? '3–5' : '2–4'}</b></div>
+            <div class="fact"><span>Отдых</span><b>${e.type === 'compound' ? '2–3 мин' : '60–90 с'}</b></div>
+          </div>
+        </div>
         <div class="heat-card glass">
+          <div class="tm-head"><h2>Какие мышцы работают</h2></div>
           <div class="body-pair" id="heatmap">
             <figure class="body-fig">${bodySVG({ view: 'front', heat, interactive: true })}<figcaption>Спереди</figcaption></figure>
             <figure class="body-fig">${bodySVG({ view: 'back', heat, interactive: true })}<figcaption>Сзади</figcaption></figure>
@@ -40,7 +50,7 @@ export function renderExercise(view, { id }) {
           <div class="mt-12">${heatLegend('слабая нагрузка', 'максимальная')}</div>
         </div>
       </div>
-      <div class="stack">
+      <div class="ex-col">
         <div class="ex-head glass">
           <span class="eyebrow">${esc(G.name)} · ${e.type === 'compound' ? 'базовое' : 'изолирующее'}</span>
           <h1 class="mt-8">${esc(e.name)}</h1>
@@ -51,8 +61,8 @@ export function renderExercise(view, { id }) {
             <span class="tag accent">${icon.repeat}${esc(e.reps)}${/[смв]$/.test(e.reps) ? '' : ' повт.'}</span>
           </div>
           <div class="ex-actions">
-            <button class="btn fav${fav ? ' on' : ''}" id="fav">${icon.star}<span>${fav ? 'В избранном' : 'В избранное'}</span></button>
             <button class="btn primary" id="add">${icon.plus}В тренировку</button>
+            <button class="btn fav${fav ? ' on' : ''}" id="fav">${icon.star}<span>${fav ? 'В избранном' : 'В избранное'}</span></button>
             <a class="btn ghost" href="${yt}" target="_blank" rel="noopener">${icon.video}Видео</a>
           </div>
         </div>
@@ -74,25 +84,15 @@ export function renderExercise(view, { id }) {
       </div>
     </section>
 
-    <section class="tech glass mt-24" aria-labelledby="tech-h">
-      <h2 id="tech-h">Техника выполнения</h2>
+    <section class="tech glass" aria-labelledby="tech-h">
+      <h2 id="tech-h">Как выполнять</h2>
       <div class="tech-grid mt-16">
-        <div>
-          <div class="anim-box" id="anim"></div>
-          <div class="facts mt-16">
-            <div class="fact"><span>Повторения</span><b>${esc(e.reps)}</b></div>
-            <div class="fact"><span>Подходы</span><b>${e.type === 'compound' ? '3–5' : '2–4'}</b></div>
-            <div class="fact"><span>Отдых</span><b>${e.type === 'compound' ? '2–3 мин' : '60–90 с'}</b></div>
-          </div>
-        </div>
-        <div>
-          <ol class="steps">${e.steps.map((s) => `<li>${esc(s)}</li>`).join('')}</ol>
+        <ol class="steps">${e.steps.map((s) => `<li>${esc(s)}</li>`).join('')}</ol>
+        <div class="stack">
           <div class="info-box"><h4>${icon.repeat}Дыхание</h4><p>${esc(e.breath || BREATH[e.type])}</p></div>
+          <div class="info-box"><h4>${icon.alert}Частые ошибки</h4><ul class="note-list bad">${e.mistakes.map((s) => `<li>${icon.x}${esc(s)}</li>`).join('')}</ul></div>
+          <div class="info-box"><h4>${icon.bulb}Советы</h4><ul class="note-list good">${e.tips.map((s) => `<li>${icon.sparkle}${esc(s)}</li>`).join('')}</ul></div>
         </div>
-      </div>
-      <div class="info-grid mt-24">
-        <div class="info-box"><h4>${icon.alert}Частые ошибки</h4><ul class="note-list bad">${e.mistakes.map((s) => `<li>${icon.x}${esc(s)}</li>`).join('')}</ul></div>
-        <div class="info-box"><h4>${icon.bulb}Советы</h4><ul class="note-list good">${e.tips.map((s) => `<li>${icon.sparkle}${esc(s)}</li>`).join('')}</ul></div>
       </div>
     </section>
 
@@ -141,7 +141,7 @@ export function renderExercise(view, { id }) {
     }
   });
 
-  const stopAnim = mountAnimation(view.querySelector('#anim'), e);
+  const stopAnim = mountTechnique(view.querySelector('#anim'), view.querySelector('#tech-mode'), e);
   const unCards = bindCardActions(view);
   document.title = `${e.name} — MuscleAtlas`;
   return () => {

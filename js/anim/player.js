@@ -1,8 +1,11 @@
-// Проигрыватель анимации техники: цикл поз, автокадрирование, управление.
+// Проигрыватель техники: фото реального выполнения (два кадра с плавной сменой)
+// и схема-манекен (цикл поз, автокадрирование). Общие кнопки: пауза и скорость.
 
 import { MOTIONS } from './motions.js';
 import { solveSide, solveFront, drawSide, drawFront, lerpPose, ease, bodyHeat, setHeatFn, BB } from './engine.js';
 import { heatRGB } from '../body/bodymap.js';
+import { PHOTOS, hasPhoto, photoSrc } from '../data/photos.js';
+import { store } from '../store.js';
 
 setHeatFn(heatRGB);
 
@@ -188,4 +191,154 @@ export function mountAnimation(box, e) {
     io.disconnect();
     document.removeEventListener('visibilitychange', onVis);
   };
+}
+
+// ------------------------------------------------------------------ фото
+const ICON_PAUSE = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><path d="M8 5v14M16 5v14"/></svg>';
+const ICON_PLAY = '<svg viewBox="0 0 24 24"><path d="M7 4.5v15l12-7.5z" fill="currentColor"/></svg>';
+const HOLD = 0.95; // сек: кадр стоит
+const FADE = 0.55; // сек: плавная смена
+
+/**
+ * Фото-анимация: два кадра (начало и конец движения) плавно сменяют друг друга.
+ * Нажатие на фото — пауза. onFail вызывается, если кадры не загрузились.
+ */
+export function mountPhoto(box, e, onFail) {
+  const a = photoSrc(e.id, 'a');
+  const b = photoSrc(e.id, 'b');
+  const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+  box.classList.add('photo');
+  box.style.setProperty('--ar', PHOTOS[e.id]);
+  box.innerHTML = `
+    <div class="ph-bg" style="background-image:url('${a}')"></div>
+    <div class="ph-stage" role="img" aria-label="Фото техники: ${e.name.replace(/"/g, '&quot;')}">
+      <img class="ph" src="${a}" alt="" decoding="async" draggable="false">
+      <img class="ph ph-b" src="${b}" alt="" decoding="async" draggable="false">
+    </div>
+    <div class="anim-ctrl">
+      <button class="btn icon sm" data-play aria-label="Пауза"></button>
+      <button class="btn sm" data-speed title="Скорость">1×</button>
+    </div>
+    <div class="anim-label"><span class="ph-dots" aria-hidden="true"><i class="on"></i><i></i></span><span data-txt>Положение 1</span></div>`;
+  const stage = box.querySelector('.ph-stage');
+  const playBtn = box.querySelector('[data-play]');
+  const speedBtn = box.querySelector('[data-speed]');
+  const dots = box.querySelectorAll('.ph-dots i');
+  const txt = box.querySelector('[data-txt]');
+
+  let playing = !reduce;
+  let visible = true;
+  let speed = 1;
+  let flip = false;
+  let timer = 0;
+  let dead = false;
+
+  const setFrame = (f) => {
+    flip = f;
+    stage.classList.toggle('flip', flip);
+    dots[0].classList.toggle('on', !flip);
+    dots[1].classList.toggle('on', flip);
+    txt.textContent = flip ? 'Положение 2' : 'Положение 1';
+  };
+  const schedule = () => {
+    clearTimeout(timer);
+    if (dead || !playing || !visible || document.hidden) return;
+    timer = setTimeout(() => {
+      setFrame(!flip);
+      schedule();
+    }, ((HOLD + FADE) / speed) * 1000);
+  };
+  const sync = () => {
+    playBtn.innerHTML = playing ? ICON_PAUSE : ICON_PLAY;
+    playBtn.setAttribute('aria-label', playing ? 'Пауза' : 'Воспроизвести');
+    box.classList.toggle('paused', !playing);
+    stage.style.setProperty('--fade', `${FADE / speed}s`);
+    schedule();
+  };
+  const toggle = () => {
+    playing = !playing;
+    sync();
+  };
+  playBtn.addEventListener('click', toggle);
+  stage.addEventListener('click', () => {
+    // на паузе нажатие листает кадры, при воспроизведении — ставит на паузу
+    if (playing) toggle();
+    else setFrame(!flip);
+  });
+  speedBtn.addEventListener('click', () => {
+    speed = speed === 1 ? 0.5 : 1;
+    speedBtn.textContent = speed === 1 ? '1×' : '0,5×';
+    sync();
+  });
+  for (const img of box.querySelectorAll('.ph')) {
+    img.addEventListener('error', () => {
+      if (!dead) onFail?.();
+    });
+  }
+  const io = new IntersectionObserver(([en]) => {
+    visible = en.isIntersecting;
+    schedule();
+  });
+  io.observe(box);
+  document.addEventListener('visibilitychange', schedule);
+
+  sync();
+  return () => {
+    dead = true;
+    clearTimeout(timer);
+    io.disconnect();
+    document.removeEventListener('visibilitychange', schedule);
+  };
+}
+
+/** Какие режимы показа техники доступны для упражнения. */
+export function techModes(e) {
+  const modes = [];
+  if (hasPhoto(e.id)) modes.push('photo');
+  if (MOTIONS[e.anim?.[0]]) modes.push('scheme');
+  return modes;
+}
+
+/**
+ * Блок техники с переключателем «Фото / Схема».
+ * @param {HTMLElement} box  контейнер .anim-box
+ * @param {HTMLElement} seg  контейнер переключателя (скрывается, если режим один)
+ */
+export function mountTechnique(box, seg, e) {
+  const modes = techModes(e);
+  const NAMES = { photo: 'Фото', scheme: 'Схема' };
+  let stop = () => {};
+  const show = (mode) => {
+    stop();
+    box.className = 'anim-box';
+    box.removeAttribute('style');
+    stop =
+      mode === 'photo'
+        ? mountPhoto(box, e, () => {
+            const i = modes.indexOf('photo');
+            if (i >= 0) modes.splice(i, 1);
+            drawSeg();
+            show('scheme');
+          })
+        : mountAnimation(box, e);
+    seg?.querySelectorAll('button').forEach((b) => {
+      b.classList.toggle('on', b.dataset.mode === mode);
+      b.setAttribute('aria-pressed', String(b.dataset.mode === mode));
+    });
+  };
+  const drawSeg = () => {
+    if (!seg) return;
+    seg.hidden = modes.length < 2;
+    seg.innerHTML = modes.map((m) => `<button type="button" data-mode="${m}">${NAMES[m]}</button>`).join('');
+  };
+  drawSeg();
+  seg?.addEventListener('click', (ev) => {
+    const b = ev.target.closest('[data-mode]');
+    if (!b || b.classList.contains('on')) return;
+    store.setSettings({ techMode: b.dataset.mode });
+    show(b.dataset.mode);
+  });
+  const pref = store.settings.techMode;
+  show(modes.includes(pref) ? pref : modes[0] || 'scheme');
+  return () => stop();
 }

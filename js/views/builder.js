@@ -26,7 +26,7 @@ export function renderBuilder(view, { id }) {
   let lastScore = null;
 
   view.innerHTML = `
-    <nav class="crumbs" aria-label="Навигация"><a href="#/workouts">Мои тренировки</a>${icon.right}<span id="crumb-name">${esc(w.name)}</span></nav>
+    <nav class="crumbs" aria-label="Навигация"><a href="#/workouts">Тренировки</a>${icon.right}<span id="crumb-name">${esc(w.name)}</span></nav>
     <div class="builder">
       <div class="builder-main">
         <div class="cfg glass">
@@ -35,6 +35,8 @@ export function renderBuilder(view, { id }) {
             <button class="btn icon sm" id="share" aria-label="Поделиться" title="Поделиться ссылкой">${icon.share}</button>
             <button class="btn icon sm" id="more" aria-label="Ещё" title="Ещё">${icon.more}</button>
           </div>
+          <details class="cfg-more" id="cfg-more"${w.items.length && matchMedia('(max-width: 760px)').matches ? '' : ' open'}>
+          <summary>${icon.filter}<span class="grow">Группы мышц, уровень, оборудование</span>${icon.down}</summary>
           <div class="cfg-row mt-16"><span class="cfg-label">Что тренируем — от этого зависит оценка</span>
             <div class="chips" id="groups"></div>
             <div class="chips mt-12" id="presets">${PRESETS.map((p) => `<button class="chip sm" data-p="${p.id}">${icon.layers.replace('<svg', '<svg style="width:13px;height:13px"')}${esc(p.name)}</button>`).join('')}</div>
@@ -44,6 +46,7 @@ export function renderBuilder(view, { id }) {
             <div><label for="goal">Цель</label><select class="select" id="goal">${Object.entries(GOALS).map(([k, v]) => `<option value="${k}">${v.name}</option>`).join('')}</select></div>
           </div>
           <div class="cfg-row"><span class="cfg-label">Доступное оборудование (для подсказок и автосборки)</span><div class="chips" id="eq"></div></div>
+          </details>
         </div>
 
         <div class="row wrap">
@@ -65,7 +68,8 @@ export function renderBuilder(view, { id }) {
         <div class="heat-card glass" id="wheat"></div>
         <div class="vol-table glass" id="vol"></div>
       </aside>
-    </div>`;
+    </div>
+    <button class="score-fab" id="score-fab" hidden aria-label="Показать оценку тренировки"></button>`;
 
   const $ = (s) => view.querySelector(s);
   $('#level').value = w.level;
@@ -144,6 +148,9 @@ export function renderBuilder(view, { id }) {
           : ''
       }`;
     animateScore(score, col);
+    const fab = $('#score-fab');
+    fab.hidden = !(w.items.length && r.parts);
+    fab.innerHTML = `<span class="mini-ring">${ringSVG(score, 44, 5, col)}<b style="color:${col}">${score}</b></span><span>Оценка<small>${r.grade ? esc(r.grade.label) : ''}</small></span>${icon.down}`;
 
     // рекомендации
     $('#recs').innerHTML = `<h3 class="ico-inline" style="margin-bottom:10px">${icon.bulb}Рекомендации</h3>${r.recs
@@ -484,10 +491,17 @@ export function renderBuilder(view, { id }) {
     });
   };
 
+  // плавающая оценка (телефон): видна, пока карточка оценки за экраном; нажатие — прокрутка к ней
+  const fabEl = $('#score-fab');
+  fabEl.addEventListener('click', () => $('#score').scrollIntoView({ behavior: 'smooth', block: 'start' }));
+  const fabIO = new IntersectionObserver(([en]) => fabEl.classList.toggle('away', en.isIntersecting));
+  fabIO.observe($('#score'));
+
   return () => {
     clearTimeout(nameT);
     cancelAnimationFrame(raf);
     unbindMap?.();
+    fabIO.disconnect();
   };
 }
 

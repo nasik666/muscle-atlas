@@ -4,6 +4,7 @@
 const routes = [];
 let cleanup = null;
 let current = { path: null, hash: null };
+let renders = 0;
 
 export function route(pattern, handler, name) {
   const keys = [];
@@ -44,6 +45,8 @@ export function render(force = false) {
     if (typeof ret === 'function') cleanup = ret;
     if (!samePage) window.scrollTo(0, 0);
     document.querySelectorAll('[data-nav]').forEach((a) => a.classList.toggle('on', a.dataset.nav === r.name));
+    document.body.classList.toggle('is-inner', path.split('/').filter(Boolean).length > 1);
+    renders++;
     return;
   }
   navigate('#/', { replace: true });
@@ -56,3 +59,9 @@ export function startRouter() {
 }
 
 export const currentRoute = () => current;
+
+/** «Назад» для кнопки в шапке: по истории, а если её нет (открыли по прямой ссылке) — в раздел. */
+export function goBack() {
+  if (renders > 1 && history.length > 1) return history.back();
+  navigate({ exercises: '#/exercises', favorites: '#/favorites', workouts: '#/workouts' }[current.name] || '#/', { replace: true });
+}

@@ -6,6 +6,7 @@ import { EXERCISES, EX, exercisesForMuscle, exercisesForGroup } from '../data/ex
 import { bindBodyMap, esc, icon, exCard, footer, fmtCount } from '../ui.js';
 import { navigate } from '../router.js';
 import { bindCardActions } from './shared.js';
+import { PROGRAMS } from '../data/programs.js';
 
 const STARTERS = ['bench-press', 'back-squat', 'pull-up', 'rdl', 'ohp', 'hip-thrust', 'lateral-raise', 'cable-crossover-high'];
 
@@ -14,6 +15,7 @@ export function groupHeat(g) {
 }
 
 export function renderHome(view) {
+  const HINT = matchMedia('(hover: none)').matches ? 'Нажмите на мышцу, чтобы увидеть упражнения' : 'Наведите или нажмите на мышцу';
   const nMuscles = Object.keys(MUSCLES).length;
   view.innerHTML = `
     <section class="hero">
@@ -24,19 +26,20 @@ export function renderHome(view) {
         <div class="hero-stats">
           <div><b>${EXERCISES.length}</b><span>упражнений</span></div>
           <div><b>${nMuscles}</b><span>мышц и их частей</span></div>
-          <div><b>6</b><span>критериев оценки</span></div>
+          <div><b>${PROGRAMS.length}</b><span>готовых программ</span></div>
         </div>
         <div class="hero-actions">
           <a class="btn primary" href="#/workouts?new=1">${icon.magic}Собрать тренировку</a>
-          <a class="btn" href="#/exercises">${icon.list}Все упражнения</a>
+          <a class="btn" href="#/workouts?tab=programs">${icon.layers}Программы</a>
+          <a class="btn" href="#/exercises">${icon.list}Упражнения</a>
         </div>
         <div class="hero-groups">
-          <div class="chips">${GROUP_ORDER.map((g) => `<a class="chip" href="#/group/${g}" data-group="${g}">${GROUPS[g].name}</a>`).join('')}</div>
+          <div class="chips scroll-x" style="--bleed:18px">${GROUP_ORDER.map((g) => `<a class="chip" href="#/group/${g}" data-group="${g}">${GROUPS[g].name}</a>`).join('')}</div>
         </div>
       </div>
       <div class="map-card glass">
         <div class="map-head">
-          <span class="map-hint" id="map-hint">Наведите или нажмите на мышцу</span>
+          <span class="map-hint" id="map-hint">${HINT}</span>
         </div>
         <div class="body-pair" id="home-map">
           <figure class="body-fig">${bodySVG({ view: 'front', interactive: true })}<figcaption>Спереди</figcaption></figure>
@@ -60,7 +63,7 @@ export function renderHome(view) {
     <div class="section-head"><h2>Как это работает</h2></div>
     <div class="feature-grid">
       <div class="feature panel"><div class="ico">${icon.flame}</div><h3>Тепловая карта нагрузки</h3><p>У каждого упражнения — карта всех задействованных мышц: от основной (красный) до стабилизаторов (светлый), с процентами.</p></div>
-      <div class="feature panel"><div class="ico">${icon.play}</div><h3>Техника в движении</h3><p>Анимация выполнения, пошаговая инструкция, частые ошибки и советы — чтобы делать правильно и без травм.</p></div>
+      <div class="feature panel"><div class="ico">${icon.play}</div><h3>Техника в движении</h3><p>Фото реального выполнения в двух фазах и схема движения, пошаговая инструкция, частые ошибки и советы — чтобы делать правильно и без травм.</p></div>
       <div class="feature panel"><div class="ico">${icon.target}</div><h3>Умная оценка тренировки</h3><p>Соберите тренировку на нужные группы — сайт оценит покрытие всех частей мышц, объём, баланс и порядок и подскажет, что добавить.</p></div>
     </div>
 
@@ -77,7 +80,7 @@ export function renderHome(view) {
       return `<b>${esc(MUSCLES[id].name)}</b><span class="muted small">${esc(GROUPS[MUSCLES[id].group].name)} · ${fmtCount(n, 'упражнение', 'упражнения', 'упражнений')}</span>`;
     },
     onHover: (id) => {
-      hint.textContent = id ? `${MUSCLES[id].name} — нажмите, чтобы открыть` : 'Наведите или нажмите на мышцу';
+      hint.textContent = id ? `${MUSCLES[id].name} — нажмите, чтобы открыть` : HINT;
     },
     onClick: (id) => navigate(`#/muscle/${id}`),
   });

@@ -1,6 +1,6 @@
 // Точка входа: маршруты, глобальный поиск, счётчики.
 
-import { route, startRouter, navigate, currentRoute } from './router.js';
+import { route, startRouter, navigate, currentRoute, goBack } from './router.js';
 import { ensureSprite } from './body/bodymap.js';
 import { store } from './store.js';
 import { renderHome } from './views/home.js';
@@ -24,7 +24,7 @@ route('/group/:id', titled(renderGroup, 'Группа мышц'), 'home');
 route('/exercises', titled(renderLibrary, 'Упражнения'), 'exercises');
 route('/exercise/:id', titled(renderExercise), 'exercises');
 route('/favorites', titled(renderFavorites, 'Избранное'), 'favorites');
-route('/workouts', titled(renderWorkouts, 'Мои тренировки'), 'workouts');
+route('/workouts', titled(renderWorkouts, 'Тренировки'), 'workouts');
 route('/workout/:id', titled(renderBuilder, 'Конструктор'), 'workouts');
 route('/share/:data', titled(renderShare, 'Тренировка'), 'workouts');
 
@@ -70,5 +70,7 @@ document.addEventListener('keydown', (e) => {
     gs.focus();
   }
 });
+
+document.getElementById('back').addEventListener('click', goBack);
 
 startRouter();

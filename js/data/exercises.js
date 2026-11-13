@@ -23,6 +23,8 @@ for (const e of EXERCISES) {
   e.primaryGroup = MUSCLES[e.primary].group;
   e.groups = [...new Set(entries.filter(([, v]) => v >= 60).map(([m]) => MUSCLES[m].group))];
   e.sorted = entries;
+  // «семейство» движения — для поиска дублей: шаблон схемы или явное поле move
+  e.move = e.move || e.anim?.[0] || e.id;
   const len = Math.hypot(...entries.map(([, v]) => v));
   e.vec = Object.fromEntries(entries.map(([m, v]) => [m, v / len]));
   e.search = norm([e.name, e.en, e.alt, ...e.eq.map((q) => EQUIPMENT[q]?.name)].join(' '));
